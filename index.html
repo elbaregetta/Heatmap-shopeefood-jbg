@@ -15,7 +15,7 @@
         #btn-resto { background: #28a745; color: white; border: none; font-weight: bold; flex: 1; cursor: pointer; }
         #btn-toggle-resto { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:active { opacity: 0.8; }
-        #map { flex-grow: 1; width: 100%; }
+        #map { flex-grow: 1; width: 100%; min-height: 300px; }
         #footer { background: #fff; padding: 8px; text-align: center; font-size: 12px; color: #555; border-top: 1px solid #ddd; }
     </style>
 </head>
@@ -38,8 +38,8 @@
 
     <div id="map"></div>
     <div id="footer">
-        Order: <b id="total-data">0</b> | Resto: <b id="total-resto">0</b> | 
-        <a href="#" onclick="hapusData()" style="color:red;">Reset Data</a>
+        Titik Order: <b id="total-data">0</b> | Resto: <b id="total-resto">0</b> | 
+        <a href="#" onclick="hapusData()" style="color:red;">Reset Data Pribadi</a>
     </div>
 
     <script src="https://unpkg.com"></script>
@@ -47,7 +47,7 @@
 
     <script>
         // 1. Inisialisasi Peta (Pusat Kota Jombang)
-        const map = L.map('map').setView([-7.5468, 112.2331], 14);
+        const map = L.map('map').setView([-7.5485, 112.2331], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
@@ -57,43 +57,47 @@
         let restoLayerGroup = L.layerGroup().addTo(map);
         let tampilkanResto = true;
 
-        // Ikon khusus Restoran (Oranye/Merah)
+        // Ikon Restoran (Sudah diperbaiki ukurannya)
         const ikonResto = L.divIcon({
-            html: '<div style="background:#ff5722; color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.4); font-size:12px;">🍴</div>',
+            html: '<div style="background:#ff5722; color:white; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.4); font-size:13px;">🍴</div>',
             className: '',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            iconSize:,
+            iconAnchor: [13, 13]
         });
 
-        // 2. Database Awal Restoran Populer / Merchant ShopeeFood di Jombang
+        // 2. Database Restoran Populer Jombang
         const restoBawaan = [
-            { nama: "Mie Gacoan Jombang", alamat: "Jl. Urip Sumoharjo No.21", lat: -7.5488, lng: 112.2356 },
-            { nama: "Pizza Hut Delivery (PHD)", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5515, lng: 112.2328 },
-            { nama: "Sentra Kuliner Jombang", alamat: "Jl. Gubernur Suryo No.15", lat: -7.5542, lng: 112.2335 },
-            { nama: "Belikopi Jombang", alamat: "Jl. KH. A. Dahlan No.14", lat: -7.5535, lng: 112.2312 },
-            { nama: "Ayam Geprek Gober", alamat: "Sambong Permai Blok C6", lat: -7.5398, lng: 112.2375 },
-            { nama: "Rasaloka Jombang", alamat: "Jl. Adityawarman No.45a", lat: -7.5451, lng: 112.2289 },
-            { nama: "Warkop Mr. Bento (Pos 1 ShopeeFood)", alamat: "Jl. Adityawarman No.27", lat: -7.5458, lng: 112.2295 },
-            { nama: "Rumah Makan & Catering Henny", alamat: "Jl. Gatot Subroto No.46", lat: -7.5385, lng: 112.2321 },
-            { nama: "Dapur DK Jombang", alamat: "Jl. Dr. Sutomo No.33", lat: -7.5529, lng: 112.2368 },
-            { nama: "Kokiku Jombang", alamat: "Jl. Pahlawan No.59", lat: -7.5471, lng: 112.2255 },
-            { nama: "Sentra PKL KH. A. Dahlan", alamat: "Jl. KH. A. Dahlan", lat: -7.5538, lng: 112.2305 },
-            { nama: "Sedap Malam Cak Lan (24 Jam)", alamat: "Jl. Dewi Sartika No.12, Sengon", lat: -7.5565, lng: 112.2265 },
-            { nama: "Warung Nasgor Do'a Ibu Mas Adam", alamat: "Jl. KH. Mimbar (Pasar Legi)", lat: -7.5432, lng: 112.2315 },
-            { nama: "Area Kuliner Kampus UNIPDU", alamat: "Peterongan, Jombang", lat: -7.5435, lng: 112.2745 },
-            { nama: "Rawon Rosobo Mojoagung", alamat: "Jl. Raya Mojoagung No.191", lat: -7.5732, lng: 112.3456 }
+            { nama: "Mie Gacoan Jombang", alamat: "Jl. Urip Sumoharjo No.21", lat: -7.5488, lng: 112.2356, jam: 13 },
+            { nama: "Pizza Hut Delivery (PHD)", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5515, lng: 112.2328, jam: 19 },
+            { nama: "Sentra Kuliner Jombang", alamat: "Jl. Gubernur Suryo No.15", lat: -7.5542, lng: 112.2335, jam: 18 },
+            { nama: "Belikopi Jombang", alamat: "Jl. KH. A. Dahlan No.14", lat: -7.5535, lng: 112.2312, jam: 16 },
+            { nama: "Ayam Geprek Gober", alamat: "Sambong Permai Blok C6", lat: -7.5398, lng: 112.2375, jam: 12 },
+            { nama: "Rasaloka Jombang", alamat: "Jl. Adityawarman No.45a", lat: -7.5451, lng: 112.2289, jam: 14 },
+            { nama: "Warkop Mr. Bento (Pos ShopeeFood)", alamat: "Jl. Adityawarman No.27", lat: -7.5458, lng: 112.2295, jam: 15 },
+            { nama: "RM & Catering Henny", alamat: "Jl. Gatot Subroto No.46", lat: -7.5385, lng: 112.2321, jam: 12 },
+            { nama: "Dapur DK Jombang", alamat: "Jl. Dr. Sutomo No.33", lat: -7.5529, lng: 112.2368, jam: 17 },
+            { nama: "Kokiku Jombang", alamat: "Jl. Pahlawan No.59", lat: -7.5471, lng: 112.2255, jam: 13 },
+            { nama: "Sentra PKL KH. A. Dahlan", alamat: "Jl. KH. A. Dahlan", lat: -7.5538, lng: 112.2305, jam: 20 },
+            { nama: "Sedap Malam Cak Lan (24 Jam)", alamat: "Jl. Dewi Sartika No.12", lat: -7.5565, lng: 112.2265, jam: 22 },
+            { nama: "Warung Nasgor Pasar Legi", alamat: "Jl. KH. Mimbar", lat: -7.5432, lng: 112.2315, jam: 21 },
+            { nama: "Area Kuliner Kampus UNIPDU", alamat: "Peterongan, Jombang", lat: -7.5435, lng: 112.2745, jam: 12 },
+            { nama: "Rawon Rosobo Mojoagung", alamat: "Jl. Raya Mojoagung", lat: -7.5732, lng: 112.3456, jam: 8 }
         ];
 
-        // 3. Ambil Data dari Memori HP
-        let dataOrder = JSON.parse(localStorage.getItem('heatmap_jombang')) || [];
+        // 3. Data Heatmap Awal (Simulasi Area Ramai Kuliner Jombang)
+        const heatmapBawaan = restoBawaan.map(r => ({ lat: r.lat, lng: r.lng, jam: r.jam }));
+
+        // Ambil Data Pribadi dari Memori HP
+        let dataOrderPribadi = JSON.parse(localStorage.getItem('heatmap_jombang')) || [];
         let restoTambahan = JSON.parse(localStorage.getItem('resto_jombang_custom')) || [];
 
-        // 4. Fungsi Render Heatmap Orderan
+        // 4. Render Heatmap
         function renderHeatmap() {
             if (heatLayer) map.removeLayer(heatLayer);
             const filter = document.getElementById('filter-waktu').value;
+            const gabunganOrder = [...heatmapBawaan, ...dataOrderPribadi];
             
-            const dataTersaring = dataOrder.filter(item => {
+            const dataTersaring = gabunganOrder.filter(item => {
                 if (filter === 'semua') return true;
                 if (filter === 'pagi') return item.jam >= 6 && item.jam < 11;
                 if (filter === 'siang') return item.jam >= 11 && item.jam < 15;
@@ -104,16 +108,16 @@
             const titikPanas = dataTersaring.map(item => [item.lat, item.lng, 1.0]);
 
             heatLayer = L.heatLayer(titikPanas, {
-                radius: 28,
-                blur: 18,
-                maxZoom: 16,
-                gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'}
+                radius: 35,
+                blur: 20,
+                maxZoom: 15,
+                gradient: {0.3: 'blue', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red'}
             }).addTo(map);
 
-            document.getElementById('total-data').innerText = dataTersaring.length;
+            document.getElementById('total-data').innerText = dataOrderPribadi.length;
         }
 
-        // 5. Fungsi Render Pin Restoran
+        // 5. Render Pin Restoran
         function renderResto() {
             restoLayerGroup.clearLayers();
             const semuaResto = [...restoBawaan, ...restoTambahan];
@@ -138,7 +142,7 @@
             }
         }
 
-        // 7. Catat Titik Orderan (Heatmap)
+        // 7. Catat Titik Orderan Baru
         function catatOrder() {
             const btn = document.getElementById('btn-catat');
             btn.innerText = "GPS...";
@@ -149,8 +153,8 @@
                 const lng = pos.coords.longitude;
                 const jam = new Date().getHours();
 
-                dataOrder.push({ lat, lng, jam });
-                localStorage.setItem('heatmap_jombang', JSON.stringify(dataOrder));
+                dataOrderPribadi.push({ lat, lng, jam });
+                localStorage.setItem('heatmap_jombang', JSON.stringify(dataOrderPribadi));
 
                 map.setView([lat, lng], 15);
                 renderHeatmap();
@@ -164,7 +168,7 @@
             }, { enableHighAccuracy: true });
         }
 
-        // 8. Tambah Pin Resto Baru Saat di Lokasi
+        // 8. Tambah Pin Resto Baru
         function tambahResto() {
             const namaResto = prompt("Masukkan Nama Restoran / Toko ShopeeFood:");
             if (!namaResto) return;
@@ -181,23 +185,16 @@
                     nama: namaResto,
                     alamat: "Ditambahkan manual oleh Driver",
                     lat: lat,
-                    lng: lng
+                    lng: lng,
+                    jam: new Date().getHours()
                 });
                 localStorage.setItem('resto_jombang_custom', JSON.stringify(restoTambahan));
 
                 map.setView([lat, lng], 16);
                 renderResto();
+                renderHeatmap();
                 btn.innerText = "🏪 + Resto";
                 btn.disabled = false;
-                alert("Pin Restoran '" + namaResto + "' berhasil ditambahkan ke peta!");
+                alert("Pin Restoran '" + namaResto + "' berhasil ditambahkan!");
             }, function() {
                 alert("Gagal akses GPS. Pastikan lokasi HP aktif.");
-                btn.innerText = "🏪 + Resto";
-                btn.disabled = false;
-            }, { enableHighAccuracy: true });
-        }
-
-        // 9. Reset Data Pribadi (Resto bawaan tetap aman)
-        function hapusData() {
-            if (confirm("Hapus riwayat heatmap & resto tambahan Anda? (Resto bawaan tidak akan terhapus)")) {
-                localStorage.removeItem('heatmap_jombang');
