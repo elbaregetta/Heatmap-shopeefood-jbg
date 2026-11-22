@@ -7,22 +7,22 @@
     <style>
         * { box-sizing: border-box; user-select: none; }
         body { margin: 0; padding: 0; font-family: sans-serif; background: #1e2229; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #header { background: #ee4d2d; color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 10; }
+        #header { background: #ee4d2d; color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 15px; z-index: 10; }
         #controls { background: #2b303a; padding: 8px; display: flex; gap: 6px; border-bottom: 1px solid #3f4654; z-index: 10; }
         select, button { padding: 9px; border-radius: 6px; border: none; font-size: 12px; font-weight: bold; }
         #filter-waktu { flex: 1; background: #fff; color: #222; }
         #btn-pin { background: #007bff; color: white; }
         #btn-gps { background: #28a745; color: white; }
-        #canvas-container { flex: 1; position: relative; width: 100%; height: 100%; touch-action: none; }
+        #canvas-container { flex: 1; position: relative; width: 100%; height: calc(100vh - 125px); touch-action: none; }
         canvas { display: block; width: 100%; height: 100%; }
-        #popup-info { position: absolute; bottom: 15px; left: 15px; right: 15px; background: rgba(255,255,255,0.95); color: #222; padding: 12px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: none; font-size: 13px; }
+        #popup-info { position: absolute; bottom: 15px; left: 15px; right: 15px; background: rgba(255,255,255,0.96); color: #222; padding: 12px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none; font-size: 13px; }
         #popup-info b { color: #ee4d2d; font-size: 14px; }
         #footer { background: #181b20; padding: 7px; text-align: center; font-size: 11px; color: #aaa; border-top: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <div id="header">🛵 Radar Heatmap & Resto Jombang (Instan)</div>
+    <div id="header">🛵 Radar Heatmap & Resto Jombang</div>
     
     <div id="controls">
         <select id="filter-waktu" onchange="gambarPeta()">
@@ -41,73 +41,69 @@
         <div id="popup-info" onclick="this.style.display='none'"></div>
     </div>
 
-    <div id="footer">Geser peta dengan 1 jari • Ketuk titik resto untuk detail</div>
+    <div id="footer">Geser peta dengan 1 jari • Ketuk titik oranye resto untuk detail</div>
 
     <script>
         const canvas = document.getElementById('petaCanvas');
         const ctx = canvas.getContext('2d');
         const popup = document.getElementById('popup-info');
 
-        // Titik Pusat Kota Jombang (Alun-Alun / Wahid Hasyim)
         let centerLat = -7.5485;
         let centerLng = 112.2331;
-        let zoom = 11000; // Skala peta
+        let zoom = 11500;
         let showPin = true;
         let myPos = null;
 
-        // Data Jalan Utama Kota Jombang (Koordinat Asli)
-        const jalanUtama = [
-            // Koridor Utama Utara-Selatan (Jl. Gatot Subroto - Wahid Hasyim - Gus Dur - Diwek)
-            { nama: "Jl. Gatot Subroto", pts: [[-7.5320, 112.2320], [-7.5450, 112.2332]] },
-            { nama: "Jl. KH. Wahid Hasyim", pts: [[-7.5450, 112.2332], [-7.5545, 112.2332]] },
-            { nama: "Jl. Gus Dur", pts: [[-7.5545, 112.2332], [-7.5680, 112.2335]] },
-            { nama: "Jl. Raya Cukir / Diwek", pts: [[-7.5680, 112.2335], [-7.6050, 112.2375]] },
-            // Koridor Timur-Barat (Jl. Panglima Sudirman - Urip Sumoharjo - Peterongan - Mojoagung)
-            { nama: "Jl. Pahlawan / Adityawarman", pts: [[-7.5475, 112.2180], [-7.5455, 112.2332]] },
-            { nama: "Jl. Urip Sumoharjo", pts: [[-7.5488, 112.2332], [-7.5480, 112.2500]] },
-            { nama: "Jl. Raya Peterongan", pts: [[-7.5480, 112.2500], [-7.5440, 112.2800]] },
-            { nama: "Jl. Raya Mojoagung", pts: [[-7.5440, 112.2800], [-7.5740, 112.3480]] },
-            // Jalan Lingkar & Pusat Kuliner Dalam Kota
-            { nama: "Jl. KH. A. Dahlan", pts: [[-7.5535, 112.2270], [-7.5535, 112.2332]] },
-            { nama: "Jl. Gubernur Suryo", pts: [[-7.5542, 112.2332], [-7.5542, 112.2400]] },
-            { nama: "Jl. Dr. Sutomo", pts: [[-7.5488, 112.2368], [-7.5560, 112.2368]] }
-        ];
+        // Data Jalan Utama Kota Jombang (Format Aman Tanpa Kurung Siku Indeks)
+        const jalanUtama = new Array(
+            { nama: "Jl. Gatot Subroto", lat1: -7.5320, lng1: 112.2320, lat2: -7.5450, lng2: 112.2332 },
+            { nama: "Jl. KH. Wahid Hasyim", lat1: -7.5450, lng1: 112.2332, lat2: -7.5545, lng2: 112.2332 },
+            { nama: "Jl. Gus Dur", lat1: -7.5545, lng1: 112.2332, lat2: -7.5680, lng2: 112.2335 },
+            { nama: "Jl. Raya Cukir / Diwek", lat1: -7.5680, lng1: 112.2335, lat2: -7.6050, lng2: 112.2375 },
+            { nama: "Jl. Pahlawan / Adityawarman", lat1: -7.5475, lng1: 112.2180, lat2: -7.5455, lng2: 112.2332 },
+            { nama: "Jl. Urip Sumoharjo", lat1: -7.5488, lng1: 112.2332, lat2: -7.5480, lng2: 112.2500 },
+            { nama: "Jl. Raya Peterongan", lat1: -7.5480, lng1: 112.2500, lat2: -7.5440, lng2: 112.2800 },
+            { nama: "Jl. Raya Mojoagung", lat1: -7.5440, lng1: 112.2800, lat2: -7.5740, lng2: 112.3480 },
+            { nama: "Jl. KH. A. Dahlan", lat1: -7.5535, lng1: 112.2270, lat2: -7.5535, lng2: 112.2332 },
+            { nama: "Jl. Gubernur Suryo", lat1: -7.5542, lng1: 112.2332, lat2: -7.5542, lng2: 112.2400 },
+            { nama: "Jl. Dr. Sutomo", lat1: -7.5488, lng1: 112.2368, lat2: -7.5560, lng2: 112.2368 }
+        );
 
         // Database Restoran & Titik Ramai ShopeeFood Jombang
-        const daftarResto = [
-            { nama: "Pizza Hut Delivery (PHD)", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5515, lng: 112.2328, jam: 19, bobot: 1.0 },
-            { nama: "Mixue & Kuliner Wahid Hasyim", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5502, lng: 112.2330, jam: 14, bobot: 1.0 },
-            { nama: "Mie Gacoan Jombang", alamat: "Jl. Urip Sumoharjo No.21", lat: -7.5488, lng: 112.2356, jam: 13, bobot: 1.0 },
-            { nama: "Sentra Kuliner Jombang", alamat: "Jl. Gubernur Suryo No.15", lat: -7.5542, lng: 112.2335, jam: 18, bobot: 1.0 },
-            { nama: "Belikopi Jombang", alamat: "Jl. KH. A. Dahlan No.14", lat: -7.5535, lng: 112.2312, jam: 16, bobot: 0.9 },
-            { nama: "Sentra PKL KH. A. Dahlan", alamat: "Jl. KH. A. Dahlan", lat: -7.5538, lng: 112.2305, jam: 20, bobot: 1.0 },
-            { nama: "Rasaloka Jombang", alamat: "Jl. Adityawarman No.45a", lat: -7.5451, lng: 112.2289, jam: 14, bobot: 0.9 },
-            { nama: "Warkop Mr. Bento (Pos Driver)", alamat: "Jl. Adityawarman No.27", lat: -7.5458, lng: 112.2295, jam: 15, bobot: 0.9 },
-            { nama: "Kokiku Jombang", alamat: "Jl. Pahlawan No.59", lat: -7.5471, lng: 112.2255, jam: 13, bobot: 0.8 },
-            { nama: "Sedap Malam Cak Lan (24 Jam)", alamat: "Jl. Dewi Sartika No.12", lat: -7.5565, lng: 112.2265, jam: 22, bobot: 0.9 },
-            { nama: "Ayam Geprek Gober", alamat: "Sambong Permai Blok C6", lat: -7.5398, lng: 112.2375, jam: 12, bobot: 0.9 },
-            { nama: "RM & Catering Henny", alamat: "Jl. Gatot Subroto No.46", lat: -7.5385, lng: 112.2321, jam: 12, bobot: 0.8 },
-            { nama: "Dapur DK Jombang", alamat: "Jl. Dr. Sutomo No.33", lat: -7.5529, lng: 112.2368, jam: 17, bobot: 0.8 },
-            { nama: "Warung Nasgor Pasar Legi", alamat: "Jl. KH. Mimbar", lat: -7.5432, lng: 112.2315, jam: 21, bobot: 0.9 },
-            { nama: "Sarapan Alun-Alun Jombang", alamat: "Jl. Diponegoro", lat: -7.5462, lng: 112.2335, jam: 8, bobot: 0.9 },
-            { nama: "Kuliner Kampus UNDAR", alamat: "Jl. Gus Dur, Candi Mulyo", lat: -7.5582, lng: 112.2325, jam: 12, bobot: 0.9 },
-            { nama: "Kuliner Kampus UNIPDU", alamat: "Peterongan, Jombang", lat: -7.5435, lng: 112.2745, jam: 12, bobot: 1.0 },
-            { nama: "Kuliner Tebuireng & Cukir", alamat: "Jl. Irian Jaya, Diwek", lat: -7.6035, lng: 112.2372, jam: 13, bobot: 0.9 },
-            { nama: "Rawon Rosobo & Pusat Kuliner", alamat: "Jl. Raya Mojoagung", lat: -7.5732, lng: 112.3456, jam: 9, bobot: 1.0 }
-        ];
+        const daftarResto = new Array(
+            { nama: "Pizza Hut Delivery (PHD)", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5515, lng: 112.2328, jam: 19 },
+            { nama: "Mixue & Kuliner Wahid Hasyim", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5502, lng: 112.2330, jam: 14 },
+            { nama: "Mie Gacoan Jombang", alamat: "Jl. Urip Sumoharjo No.21", lat: -7.5488, lng: 112.2356, jam: 13 },
+            { nama: "Sentra Kuliner Jombang", alamat: "Jl. Gubernur Suryo No.15", lat: -7.5542, lng: 112.2335, jam: 18 },
+            { nama: "Belikopi Jombang", alamat: "Jl. KH. A. Dahlan No.14", lat: -7.5535, lng: 112.2312, jam: 16 },
+            { nama: "Sentra PKL KH. A. Dahlan", alamat: "Jl. KH. A. Dahlan", lat: -7.5538, lng: 112.2305, jam: 20 },
+            { nama: "Rasaloka Jombang", alamat: "Jl. Adityawarman No.45a", lat: -7.5451, lng: 112.2289, jam: 14 },
+            { nama: "Warkop Mr. Bento (Pos Driver)", alamat: "Jl. Adityawarman No.27", lat: -7.5458, lng: 112.2295, jam: 15 },
+            { nama: "Kokiku Jombang", alamat: "Jl. Pahlawan No.59", lat: -7.5471, lng: 112.2255, jam: 13 },
+            { nama: "Sedap Malam Cak Lan (24 Jam)", alamat: "Jl. Dewi Sartika No.12", lat: -7.5565, lng: 112.2265, jam: 22 },
+            { nama: "Ayam Geprek Gober", alamat: "Sambong Permai Blok C6", lat: -7.5398, lng: 112.2375, jam: 12 },
+            { nama: "RM & Catering Henny", alamat: "Jl. Gatot Subroto No.46", lat: -7.5385, lng: 112.2321, jam: 12 },
+            { nama: "Dapur DK Jombang", alamat: "Jl. Dr. Sutomo No.33", lat: -7.5529, lng: 112.2368, jam: 17 },
+            { nama: "Warung Nasgor Pasar Legi", alamat: "Jl. KH. Mimbar", lat: -7.5432, lng: 112.2315, jam: 21 },
+            { nama: "Sarapan Alun-Alun Jombang", alamat: "Jl. Diponegoro", lat: -7.5462, lng: 112.2335, jam: 8 },
+            { nama: "Kuliner Kampus UNDAR", alamat: "Jl. Gus Dur, Candi Mulyo", lat: -7.5582, lng: 112.2325, jam: 12 },
+            { nama: "Kuliner Kampus UNIPDU", alamat: "Peterongan, Jombang", lat: -7.5435, lng: 112.2745, jam: 12 },
+            { nama: "Kuliner Tebuireng & Cukir", alamat: "Jl. Irian Jaya, Diwek", lat: -7.6035, lng: 112.2372, jam: 13 },
+            { nama: "Rawon Rosobo & Pusat Kuliner", alamat: "Jl. Raya Mojoagung", lat: -7.5732, lng: 112.3456, jam: 9 }
+        );
 
         function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth || window.innerWidth;
+            canvas.height = container.clientHeight || (window.innerHeight - 130);
             gambarPeta();
         }
         window.addEventListener('resize', resizeCanvas);
 
-        // Konversi Koordinat GPS ke Layar HP
         function gpsKeLayar(lat, lng) {
             const x = (canvas.width / 2) + (lng - centerLng) * zoom;
             const y = (canvas.height / 2) - (lat - centerLat) * zoom;
-            return { x, y };
+            return { x: x, y: y };
         }
 
         function gambarPeta() {
@@ -127,25 +123,23 @@
             ctx.strokeStyle = "#4b5263";
             ctx.lineWidth = 6;
             ctx.lineCap = "round";
-            jalanUtama.forEach(jln => {
+            jalanUtama.forEach(function(jln) {
+                const p1 = gpsKeLayar(jln.lat1, jln.lng1);
+                const p2 = gpsKeLayar(jln.lat2, jln.lng2);
+                
                 ctx.beginPath();
-                jln.pts.forEach((pt, i) => {
-                    const pos = gpsKeLayar(pt[0], pt[1]);
-                    if (i === 0) ctx.moveTo(pos.x, pos.y);
-                    else ctx.lineTo(pos.x, pos.y);
-                });
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
                 ctx.stroke();
 
-                // Label Nama Jalan
-                const mid = gpsKeLayar(jln.pts[0][0], jln.pts[0][1]);
-                ctx.fillStyle = "#8a94a6";
+                ctx.fillStyle = "#9da5b4";
                 ctx.font = "10px sans-serif";
-                ctx.fillText(jln.nama, mid.x + 5, mid.y - 5);
+                ctx.fillText(jln.nama, (p1.x + p2.x) / 2 + 5, (p1.y + p2.y) / 2 - 4);
             });
 
-            // Filter Data Waktu
+            // Filter Waktu
             const filter = document.getElementById('filter-waktu').value;
-            const restoAktif = daftarResto.filter(item => {
+            const restoAktif = daftarResto.filter(function(item) {
                 if (filter === 'semua') return true;
                 if (filter === 'pagi') return item.jam >= 6 && item.jam < 11;
                 if (filter === 'siang') return item.jam >= 11 && item.jam < 15;
@@ -153,16 +147,27 @@
                 if (filter === 'malam') return item.jam >= 19 || item.jam < 6;
             });
 
-            // 3. Gambar Warna Merah Heatmap (Efek Radial Glow)
+            // 3. Gambar Warna Merah Heatmap
             ctx.globalCompositeOperation = "lighter";
-            restoAktif.forEach(r => {
+            restoAktif.forEach(function(r) {
                 const pos = gpsKeLayar(r.lat, r.lng);
-                const radius = 55;
+                const radius = 58;
                 const grad = ctx.createRadialGradient(pos.x, pos.y, 4, pos.x, pos.y, radius);
-                grad.addColorStop(0, "rgba(255, 30, 0, 0.75)");
+                grad.addColorStop(0, "rgba(255, 30, 0, 0.8)");
                 grad.addColorStop(0.4, "rgba(255, 140, 0, 0.35)");
                 grad.addColorStop(0.7, "rgba(50, 205, 50, 0.15)");
                 grad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
                 ctx.fillStyle = grad;
                 ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalCompositeOperation = "source-over";
+
+            // 4. Gambar Pin Restoran
+            if (showPin) {
+                restoAktif.forEach(function(r) {
+                    const pos = gpsKeLayar(r.lat, r.lng);
+                    ctx.fillStyle = "#ff5722";
+                    ctx.beginPath();
