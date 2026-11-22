@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Heatmap & Resto Jombang</title>
-    <link rel="stylesheet" href="https://cloudflare.com" />
+    <link rel="stylesheet" href="https://jsdelivr.net" />
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: sans-serif; background: #f0f0f0; }
@@ -37,24 +37,25 @@
     <div id="map"></div>
     <div id="footer">Status: <b id="status-peta">Memuat peta...</b></div>
 
-    <script src="https://cloudflare.com"></script>
-    <script src="https://cloudflare.com"></script>
+    <script src="https://jsdelivr.net"></script>
+    <script src="https://jsdelivr.net"></script>
 
     <script>
         window.onload = function() {
             const statusEl = document.getElementById('status-peta');
 
             if (typeof L === 'undefined') {
-                statusEl.innerHTML = "<span style='color:red'>Gagal memuat sistem peta. Cek koneksi internet.</span>";
+                statusEl.innerHTML = "<span style='color:red'>Koneksi diblokir operator. Aktifkan DNS Google/Cloudflare di HP.</span>";
                 return;
             }
 
             // 1. Inisialisasi Peta Pusat Kota Jombang
             const map = L.map('map').setView([-7.5485, 112.2331], 14);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Menggunakan Peta CartoDB (Lebih ringan & cepat di HP Android)
+            L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
                 maxZoom: 19,
-                attribution: '© OpenStreetMap'
+                attribution: '© OpenStreetMap © CARTO'
             }).addTo(map);
 
             let heatLayer = null;
@@ -85,7 +86,7 @@
                 { nama: "Rawon Rosobo & Pusat Kuliner", alamat: "Jl. Raya Mojoagung", lat: -7.5732, lng: 112.3456, jam: 9, bobot: 1.0 }
             ];
 
-            // 3. Render Pin Restoran (Menggunakan CircleMarker agar anti-error)
+            // 3. Render Pin Restoran
             function renderResto() {
                 restoLayerGroup.clearLayers();
                 daftarResto.forEach(function(resto) {
