@@ -171,3 +171,73 @@
                     const pos = gpsKeLayar(r.lat, r.lng);
                     ctx.fillStyle = "#ff5722";
                     ctx.beginPath();
+if (myPos) {
+const p = gpsKeLayar(myPos.lat, myPos.lng);
+ctx.fillStyle = "#00e676";
+ctx.beginPath();
+ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+ctx.fill();
+ctx.strokeStyle = "#fff";
+ctx.lineWidth = 2.5;
+ctx.stroke();
+ctx.fillStyle = "#00e676";
+ctx.font = "bold 12px sans-serif";
+ctx.fillText("POSISI ANDA", p.x + 10, p.y + 4);
+}
+}
+// Kontrol Geser & Ketuk Layar (Menggunakan .item(0) agar bebas kurung siku)
+let isDragging = false;
+let lastX = 0;
+let lastY = 0;
+canvas.addEventListener('touchstart', function(e) {
+if (e.touches.length === 1) {
+isDragging = true;
+const sentuh = e.touches.item(0);
+lastX = sentuh.clientX;
+lastY = sentuh.clientY;
+cekKlikResto(lastX, lastY - canvas.getBoundingClientRect().top);
+}
+});
+canvas.addEventListener('touchmove', function(e) {
+if (isDragging && e.touches.length === 1) {
+const sentuh = e.touches.item(0);
+const dx = sentuh.clientX - lastX;
+const dy = sentuh.clientY - lastY;
+centerLng -= dx / zoom;
+centerLat += dy / zoom;
+lastX = sentuh.clientX;
+lastY = sentuh.clientY;
+gambarPeta();
+}
+});
+canvas.addEventListener('touchend', function() { isDragging = false; });
+function cekKlikResto(x, y) {
+let ketemu = false;
+daftarResto.forEach(function(r) {
+const pos = gpsKeLayar(r.lat, r.lng);
+const jarak = Math.hypot(pos.x - x, pos.y - y);
+if (jarak < 22) {
+popup.innerHTML = "🍴 " + r.nama + "
+" + r.alamat + "
+Jam Ramai: Sekitar pukul " + r.jam + ":00";
+popup.style.display = 'block';
+ketemu = true;
+}
+});
+if (!ketemu) popup.style.display = 'none';
+}
+function togglePin() {
+showPin = !showPin;
+gambarPeta();
+}
+function cekGPS() {
+if ("geolocation" in navigator) {
+navigator.geolocation.getCurrentPosition(function(pos) {
+myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+centerLat = myPos.lat;
+centerLng = myPos.lng;
+gambarPeta();
+}, function() { alert("Aktifkan GPS HP Anda."); });
+}
+}
+setTimeout(resizeCanvas, 100);
