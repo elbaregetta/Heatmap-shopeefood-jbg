@@ -1,243 +1,146 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Radar Heatmap Jombang</title>
-    <style>
-        * { box-sizing: border-box; user-select: none; }
-        body { margin: 0; padding: 0; font-family: sans-serif; background: #1e2229; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #header { background: #ee4d2d; color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 15px; z-index: 10; }
-        #controls { background: #2b303a; padding: 8px; display: flex; gap: 6px; border-bottom: 1px solid #3f4654; z-index: 10; }
-        select, button { padding: 9px; border-radius: 6px; border: none; font-size: 12px; font-weight: bold; }
-        #filter-waktu { flex: 1; background: #fff; color: #222; }
-        #btn-pin { background: #007bff; color: white; }
-        #btn-gps { background: #28a745; color: white; }
-        #canvas-container { flex: 1; position: relative; width: 100%; height: calc(100vh - 125px); touch-action: none; }
-        canvas { display: block; width: 100%; height: 100%; }
-        #popup-info { position: absolute; bottom: 15px; left: 15px; right: 15px; background: rgba(255,255,255,0.96); color: #222; padding: 12px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none; font-size: 13px; }
-        #popup-info b { color: #ee4d2d; font-size: 14px; }
-        #footer { background: #181b20; padding: 7px; text-align: center; font-size: 11px; color: #aaa; border-top: 1px solid #333; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Radar Jombang</title>
+<style>
+body{margin:0;background:#1e2229;color:#fff;font-family:sans-serif;overflow:hidden}
+#top{background:#ee4d2d;padding:10px;text-align:center;font-weight:bold;font-size:15px}
+#bar{background:#2b303a;padding:8px;display:flex;gap:6px}
+select,button{padding:8px;border-radius:6px;border:none;font-weight:bold;font-size:12px}
+select{flex:1;background:#fff;color:#222}
+#b1{background:#007bff;color:#fff}#b2{background:#28a745;color:#fff}
+#info{position:fixed;bottom:15px;left:15px;right:15px;background:#fff;color:#222;padding:12px;border-radius:8px;display:none;font-size:13px;box-shadow:0 4px 12px #000}
+</style>
 </head>
 <body>
+<div id="top">🛵 Radar Heatmap & Resto Jombang</div>
+<div id="bar">
+<select id="jam" onchange="draw()">
+<option value="0">Semua Jam Ramai</option>
+<option value="1">Pagi (06-11)</option>
+<option value="2">Siang (11-15)</option>
+<option value="3">Sore (15-19)</option>
+<option value="4">Malam (19-24)</option>
+</select>
+<button id="b1" onclick="pin=!pin;draw()">👁️ Pin</button>
+<button id="b2" onclick="gps()">📍 Saya</button>
+</div>
+<canvas id="cv"></canvas>
+<div id="info" onclick="this.style.display='none'"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),info=document.getElementById('info');
+let cLat=-7.5485,cLng=112.2331,zm=11500,pin=true,me=null;
 
-    <div id="header">🛵 Radar Heatmap & Resto Jombang</div>
-    
-    <div id="controls">
-        <select id="filter-waktu" onchange="gambarPeta()">
-            <option value="semua">Semua Jam Ramai</option>
-            <option value="pagi">Pagi (06:00 - 11:00)</option>
-            <option value="siang">Siang (11:00 - 15:00)</option>
-            <option value="sore">Sore (15:00 - 19:00)</option>
-            <option value="malam">Malam (19:00 - 24:00)</option>
-        </select>
-        <button id="btn-pin" onclick="togglePin()">👁️ Pin</button>
-        <button id="btn-gps" onclick="cekGPS()">📍 Saya</button>
-    </div>
+const jln=[
+{n:"Gatot Subroto",a:-7.532,b:112.232,c:-7.545,d:112.2332},
+{n:"Wahid Hasyim",a:-7.545,b:112.2332,c:-7.5545,d:112.2332},
+{n:"Jl. Gus Dur",a:-7.5545,b:112.2332,c:-7.568,d:112.2335},
+{n:"Raya Diwek",a:-7.568,b:112.2335,c:-7.605,d:112.2375},
+{n:"Adityawarman",a:-7.5475,b:112.218,c:-7.5455,d:112.2332},
+{n:"Urip Sumoharjo",a:-7.5488,b:112.2332,c:-7.548,d:112.25},
+{n:"Peterongan",a:-7.548,b:112.25,c:-7.544,d:112.28},
+{n:"Mojoagung",a:-7.544,b:112.28,c:-7.574,d:112.348},
+{n:"KH. A. Dahlan",a:-7.5535,b:112.227,c:-7.5535,d:112.2332},
+{n:"Gubernur Suryo",a:-7.5542,b:112.2332,c:-7.5542,d:112.24}
+];
 
-    <div id="canvas-container">
-        <canvas id="petaCanvas"></canvas>
-        <div id="popup-info" onclick="this.style.display='none'"></div>
-    </div>
+const resto=[
+{n:"PHD Wahid Hasyim",al:"Jl. KH. Wahid Hasyim",lt:-7.5515,lg:112.2328,j:19},
+{n:"Mixue Wahid Hasyim",al:"Jl. KH. Wahid Hasyim",lt:-7.5502,lg:112.2330,j:14},
+{n:"Mie Gacoan Jombang",al:"Jl. Urip Sumoharjo",lt:-7.5488,lg:112.2356,j:13},
+{n:"Sentra Kuliner",al:"Jl. Gubernur Suryo",lt:-7.5542,lg:112.2335,j:18},
+{n:"Belikopi Jombang",al:"Jl. KH. A. Dahlan",lt:-7.5535,lg:112.2312,j:16},
+{n:"Sentra PKL Dahlan",al:"Jl. KH. A. Dahlan",lt:-7.5538,lg:112.2305,j:20},
+{n:"Rasaloka Jombang",al:"Jl. Adityawarman",lt:-7.5451,lg:112.2289,j:14},
+{n:"Warkop Mr. Bento",al:"Pos Driver Adityawarman",lt:-7.5458,lg:112.2295,j:15},
+{n:"Kokiku Jombang",al:"Jl. Pahlawan",lt:-7.5471,lg:112.2255,j:13},
+{n:"Sedap Malam Cak Lan",al:"Jl. Dewi Sartika (24 Jam)",lt:-7.5565,lg:112.2265,j:22},
+{n:"Geprek Gober",al:"Sambong Permai",lt:-7.5398,lg:112.2375,j:12},
+{n:"RM Henny",al:"Jl. Gatot Subroto",lt:-7.5385,lg:112.2321,j:12},
+{n:"Dapur DK",al:"Jl. Dr. Sutomo",lt:-7.5529,lg:112.2368,j:17},
+{n:"Nasgor Pasar Legi",al:"Jl. KH. Mimbar",lt:-7.5432,lg:112.2315,j:21},
+{n:"Sarapan Alun-Alun",al:"Jl. Diponegoro",lt:-7.5462,lg:112.2335,j:8},
+{n:"Kuliner UNDAR",al:"Jl. Gus Dur",lt:-7.5582,lg:112.2325,j:12},
+{n:"Kuliner UNIPDU",al:"Peterongan",lt:-7.5435,lg:112.2745,j:12},
+{n:"Kuliner Cukir/Diwek",al:"Jl. Irian Jaya",lt:-7.6035,lg:112.2372,j:13},
+{n:"Rawon Rosobo",al:"Jl. Raya Mojoagung",lt:-7.5732,lg:112.3456,j:9}
+];
 
-    <div id="footer">Geser peta dengan 1 jari • Ketuk titik oranye resto untuk detail</div>
+function xy(lt,lg){return{x:(cv.width/2)+(lg-cLng)*zm,y:(cv.height/2)-(lt-cLat)*zm}}
 
-    <script>
-        const canvas = document.getElementById('petaCanvas');
-        const ctx = canvas.getContext('2d');
-        const popup = document.getElementById('popup-info');
+function draw(){
+cv.width=window.innerWidth;
+cv.height=window.innerHeight-90;
+ctx.fillStyle="#1e2229";ctx.fillRect(0,0,cv.width,cv.height);
 
-        let centerLat = -7.5485;
-        let centerLng = 112.2331;
-        let zoom = 11500;
-        let showPin = true;
-        let myPos = null;
+ctx.strokeStyle="#282c34";ctx.lineWidth=1;
+for(let x=0;x<cv.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke()}
+for(let y=0;y<cv.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke()}
 
-        // Data Jalan Utama Kota Jombang (Format Aman Tanpa Kurung Siku Indeks)
-        const jalanUtama = new Array(
-            { nama: "Jl. Gatot Subroto", lat1: -7.5320, lng1: 112.2320, lat2: -7.5450, lng2: 112.2332 },
-            { nama: "Jl. KH. Wahid Hasyim", lat1: -7.5450, lng1: 112.2332, lat2: -7.5545, lng2: 112.2332 },
-            { nama: "Jl. Gus Dur", lat1: -7.5545, lng1: 112.2332, lat2: -7.5680, lng2: 112.2335 },
-            { nama: "Jl. Raya Cukir / Diwek", lat1: -7.5680, lng1: 112.2335, lat2: -7.6050, lng2: 112.2375 },
-            { nama: "Jl. Pahlawan / Adityawarman", lat1: -7.5475, lng1: 112.2180, lat2: -7.5455, lng2: 112.2332 },
-            { nama: "Jl. Urip Sumoharjo", lat1: -7.5488, lng1: 112.2332, lat2: -7.5480, lng2: 112.2500 },
-            { nama: "Jl. Raya Peterongan", lat1: -7.5480, lng1: 112.2500, lat2: -7.5440, lng2: 112.2800 },
-            { nama: "Jl. Raya Mojoagung", lat1: -7.5440, lng1: 112.2800, lat2: -7.5740, lng2: 112.3480 },
-            { nama: "Jl. KH. A. Dahlan", lat1: -7.5535, lng1: 112.2270, lat2: -7.5535, lng2: 112.2332 },
-            { nama: "Jl. Gubernur Suryo", lat1: -7.5542, lng1: 112.2332, lat2: -7.5542, lng2: 112.2400 },
-            { nama: "Jl. Dr. Sutomo", lat1: -7.5488, lng1: 112.2368, lat2: -7.5560, lng2: 112.2368 }
-        );
+ctx.strokeStyle="#4b5263";ctx.lineWidth=6;ctx.lineCap="round";
+jln.forEach(s=>{
+let p1=xy(s.a,s.b),p2=xy(s.c,s.d);
+ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
+ctx.fillStyle="#9da5b4";ctx.font="10px sans-serif";ctx.fillText(s.n,(p1.x+p2.x)/2+4,(p1.y+p2.y)/2-4);
+});
 
-        // Database Restoran & Titik Ramai ShopeeFood Jombang
-        const daftarResto = new Array(
-            { nama: "Pizza Hut Delivery (PHD)", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5515, lng: 112.2328, jam: 19 },
-            { nama: "Mixue & Kuliner Wahid Hasyim", alamat: "Jl. KH. Wahid Hasyim", lat: -7.5502, lng: 112.2330, jam: 14 },
-            { nama: "Mie Gacoan Jombang", alamat: "Jl. Urip Sumoharjo No.21", lat: -7.5488, lng: 112.2356, jam: 13 },
-            { nama: "Sentra Kuliner Jombang", alamat: "Jl. Gubernur Suryo No.15", lat: -7.5542, lng: 112.2335, jam: 18 },
-            { nama: "Belikopi Jombang", alamat: "Jl. KH. A. Dahlan No.14", lat: -7.5535, lng: 112.2312, jam: 16 },
-            { nama: "Sentra PKL KH. A. Dahlan", alamat: "Jl. KH. A. Dahlan", lat: -7.5538, lng: 112.2305, jam: 20 },
-            { nama: "Rasaloka Jombang", alamat: "Jl. Adityawarman No.45a", lat: -7.5451, lng: 112.2289, jam: 14 },
-            { nama: "Warkop Mr. Bento (Pos Driver)", alamat: "Jl. Adityawarman No.27", lat: -7.5458, lng: 112.2295, jam: 15 },
-            { nama: "Kokiku Jombang", alamat: "Jl. Pahlawan No.59", lat: -7.5471, lng: 112.2255, jam: 13 },
-            { nama: "Sedap Malam Cak Lan (24 Jam)", alamat: "Jl. Dewi Sartika No.12", lat: -7.5565, lng: 112.2265, jam: 22 },
-            { nama: "Ayam Geprek Gober", alamat: "Sambong Permai Blok C6", lat: -7.5398, lng: 112.2375, jam: 12 },
-            { nama: "RM & Catering Henny", alamat: "Jl. Gatot Subroto No.46", lat: -7.5385, lng: 112.2321, jam: 12 },
-            { nama: "Dapur DK Jombang", alamat: "Jl. Dr. Sutomo No.33", lat: -7.5529, lng: 112.2368, jam: 17 },
-            { nama: "Warung Nasgor Pasar Legi", alamat: "Jl. KH. Mimbar", lat: -7.5432, lng: 112.2315, jam: 21 },
-            { nama: "Sarapan Alun-Alun Jombang", alamat: "Jl. Diponegoro", lat: -7.5462, lng: 112.2335, jam: 8 },
-            { nama: "Kuliner Kampus UNDAR", alamat: "Jl. Gus Dur, Candi Mulyo", lat: -7.5582, lng: 112.2325, jam: 12 },
-            { nama: "Kuliner Kampus UNIPDU", alamat: "Peterongan, Jombang", lat: -7.5435, lng: 112.2745, jam: 12 },
-            { nama: "Kuliner Tebuireng & Cukir", alamat: "Jl. Irian Jaya, Diwek", lat: -7.6035, lng: 112.2372, jam: 13 },
-            { nama: "Rawon Rosobo & Pusat Kuliner", alamat: "Jl. Raya Mojoagung", lat: -7.5732, lng: 112.3456, jam: 9 }
-        );
+let f=document.getElementById('jam').value;
+let akt=resto.filter(r=>f=="0"||(f=="1"&&r.j>=6&&r.j<11)||(f=="2"&&r.j>=11&&r.j<15)||(f=="3"&&r.j>=15&&r.j<19)||(f=="4"&&(r.j>=19||r.j<6)));
 
-        function resizeCanvas() {
-            const container = document.getElementById('canvas-container');
-            canvas.width = container.clientWidth || window.innerWidth;
-            canvas.height = container.clientHeight || (window.innerHeight - 130);
-            gambarPeta();
-        }
-        window.addEventListener('resize', resizeCanvas);
+ctx.globalCompositeOperation="lighter";
+akt.forEach(r=>{
+let p=xy(r.lt,r.lg),g=ctx.createRadialGradient(p.x,p.y,4,p.x,p.y,55);
+g.addColorStop(0,"rgba(255,30,0,0.85)");g.addColorStop(0.5,"rgba(255,140,0,0.35)");g.addColorStop(1,"rgba(0,0,0,0)");
+ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,55,0,6.28);ctx.fill();
+});
+ctx.globalCompositeOperation="source-over";
 
-        function gpsKeLayar(lat, lng) {
-            const x = (canvas.width / 2) + (lng - centerLng) * zoom;
-            const y = (canvas.height / 2) - (lat - centerLat) * zoom;
-            return { x: x, y: y };
-        }
+if(pin){
+akt.forEach(r=>{
+let p=xy(r.lt,r.lg);
+ctx.fillStyle="#ff5722";ctx.beginPath();ctx.arc(p.x,p.y,6,0,6.28);ctx.fill();
+ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+});
+}
 
-        function gambarPeta() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+let al=xy(-7.5462,112.2332);
+ctx.fillStyle="#61dafb";ctx.font="bold 11px sans-serif";ctx.fillText("★ ALUN-ALUN JOMBANG",al.x-55,al.y-10);
 
-            // 1. Gambar Grid Kota
-            ctx.strokeStyle = "#282c34";
-            ctx.lineWidth = 1;
-            for (let x = 0; x < canvas.width; x += 40) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += 40) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-
-            // 2. Gambar Jalan Utama Jombang
-            ctx.strokeStyle = "#4b5263";
-            ctx.lineWidth = 6;
-            ctx.lineCap = "round";
-            jalanUtama.forEach(function(jln) {
-                const p1 = gpsKeLayar(jln.lat1, jln.lng1);
-                const p2 = gpsKeLayar(jln.lat2, jln.lng2);
-                
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-
-                ctx.fillStyle = "#9da5b4";
-                ctx.font = "10px sans-serif";
-                ctx.fillText(jln.nama, (p1.x + p2.x) / 2 + 5, (p1.y + p2.y) / 2 - 4);
-            });
-
-            // Filter Waktu
-            const filter = document.getElementById('filter-waktu').value;
-            const restoAktif = daftarResto.filter(function(item) {
-                if (filter === 'semua') return true;
-                if (filter === 'pagi') return item.jam >= 6 && item.jam < 11;
-                if (filter === 'siang') return item.jam >= 11 && item.jam < 15;
-                if (filter === 'sore') return item.jam >= 15 && item.jam < 19;
-                if (filter === 'malam') return item.jam >= 19 || item.jam < 6;
-            });
-
-            // 3. Gambar Warna Merah Heatmap
-            ctx.globalCompositeOperation = "lighter";
-            restoAktif.forEach(function(r) {
-                const pos = gpsKeLayar(r.lat, r.lng);
-                const radius = 58;
-                const grad = ctx.createRadialGradient(pos.x, pos.y, 4, pos.x, pos.y, radius);
-                grad.addColorStop(0, "rgba(255, 30, 0, 0.8)");
-                grad.addColorStop(0.4, "rgba(255, 140, 0, 0.35)");
-                grad.addColorStop(0.7, "rgba(50, 205, 50, 0.15)");
-                grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.globalCompositeOperation = "source-over";
-
-            // 4. Gambar Pin Restoran
-            if (showPin) {
-                restoAktif.forEach(function(r) {
-                    const pos = gpsKeLayar(r.lat, r.lng);
-                    ctx.fillStyle = "#ff5722";
-                    ctx.beginPath();
-if (myPos) {
-const p = gpsKeLayar(myPos.lat, myPos.lng);
-ctx.fillStyle = "#00e676";
-ctx.beginPath();
-ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-ctx.fill();
-ctx.strokeStyle = "#fff";
-ctx.lineWidth = 2.5;
-ctx.stroke();
-ctx.fillStyle = "#00e676";
-ctx.font = "bold 12px sans-serif";
-ctx.fillText("POSISI ANDA", p.x + 10, p.y + 4);
+if(me){
+let p=xy(me.lt,me.lg);
+ctx.fillStyle="#00e676";ctx.beginPath();ctx.arc(p.x,p.y,8,0,6.28);ctx.fill();
+ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+ctx.fillText("POSISI ANDA",p.x+10,p.y+4);
 }
 }
-// Kontrol Geser & Ketuk Layar (Menggunakan .item(0) agar bebas kurung siku)
-let isDragging = false;
-let lastX = 0;
-let lastY = 0;
-canvas.addEventListener('touchstart', function(e) {
-if (e.touches.length === 1) {
-isDragging = true;
-const sentuh = e.touches.item(0);
-lastX = sentuh.clientX;
-lastY = sentuh.clientY;
-cekKlikResto(lastX, lastY - canvas.getBoundingClientRect().top);
+
+let dr=false,lx=0,ly=0;
+cv.addEventListener('touchstart',e=>{
+dr=true;let t=e.touches.item(0);lx=t.clientX;ly=t.clientY;
+let hit=false;
+resto.forEach(r=>{
+let p=xy(r.lt,r.lg);
+if(Math.hypot(p.x-lx,p.y-(ly-90))<22){
+info.innerHTML="<b style='color:#ee4d2d'>🍴 "+r.n+"</b><br>"+r.al+"<br><small>Jam Ramai: "+r.j+":00</small>";
+info.style.display="block";hit=true;
 }
 });
-canvas.addEventListener('touchmove', function(e) {
-if (isDragging && e.touches.length === 1) {
-const sentuh = e.touches.item(0);
-const dx = sentuh.clientX - lastX;
-const dy = sentuh.clientY - lastY;
-centerLng -= dx / zoom;
-centerLat += dy / zoom;
-lastX = sentuh.clientX;
-lastY = sentuh.clientY;
-gambarPeta();
-}
+if(!hit)info.style.display="none";
 });
-canvas.addEventListener('touchend', function() { isDragging = false; });
-function cekKlikResto(x, y) {
-let ketemu = false;
-daftarResto.forEach(function(r) {
-const pos = gpsKeLayar(r.lat, r.lng);
-const jarak = Math.hypot(pos.x - x, pos.y - y);
-if (jarak < 22) {
-popup.innerHTML = "🍴 " + r.nama + "
-" + r.alamat + "
-Jam Ramai: Sekitar pukul " + r.jam + ":00";
-popup.style.display = 'block';
-ketemu = true;
+cv.addEventListener('touchmove',e=>{
+if(!dr)return;e.preventDefault();
+let t=e.touches.item(0);cLng-=(t.clientX-lx)/zm;cLat+=(t.clientY-ly)/zm;lx=t.clientX;ly=t.clientY;draw();
+},{passive:false});
+cv.addEventListener('touchend',()=>dr=false);
+
+function gps(){
+navigator.geolocation.getCurrentPosition(p=>{
+me={lt:p.coords.latitude,lg:p.coords.longitude};cLat=me.lt;cLng=me.lg;draw();
+},()=>alert("Aktifkan GPS HP Anda."));
 }
-});
-if (!ketemu) popup.style.display = 'none';
-}
-function togglePin() {
-showPin = !showPin;
-gambarPeta();
-}
-function cekGPS() {
-if ("geolocation" in navigator) {
-navigator.geolocation.getCurrentPosition(function(pos) {
-myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-centerLat = myPos.lat;
-centerLng = myPos.lng;
-gambarPeta();
-}, function() { alert("Aktifkan GPS HP Anda."); });
-}
-}
-setTimeout(resizeCanvas, 100);
+draw();
+</script>
+</body>
+</html>
